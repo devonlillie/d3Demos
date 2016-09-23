@@ -24,25 +24,44 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		.attr('width','100%')
 		.attr('x',0).attr('y',0);
 
-	$scope.svg = createSvg('#d3canvas')
+	$scope.svg = d3.select('#d3canvas')
+		.append("svg")
+		.attr('height','100%')
+		.attr('width','100%')
+		.attr('id','graph')
+		.attr('class','nopadding')
 		.call($scope.zoom.on("zoom", function () {
 			 $scope.svg.attr("transform", d3.event.transform);}))
-		.on("dblclick.zoom", null);
+		.on("dblclick.zoom", null)
+		.append('g');
                	       	 
 	$scope.reset = function(){
 		d3.select('#graph').remove();
 		$scope.zoom = d3.zoom()
-		$scope.svg = createSvg('#d3canvas')
-				.call($scope.zoom.on("zoom", function () {
-					 $scope.svg.attr("transform", d3.event.transform);}))
-				.on("dblclick.zoom", null);
+		$scope.svg = d3.select('#d3canvas')
+			.append("svg")
+			.attr('id','graph')
+			.attr('class','nopadding')
+			.attr('height','100%')
+			.attr('width','100%')
+			.call($scope.zoom.on("zoom", function () {
+				 $scope.svg.attr("transform", d3.event.transform);}))
+			.on("dblclick.zoom", null)
+			.append('g');
 	
 		$http.get('/json/Teims/').then(function successCallback(response){
 			$scope.graph = response.data;
-			$scope.update($scope.graph);
+			$scope.graph.x0=0;
+			$scope.graph.y0=0;
+			$scope.nodes = defineTree($scope.graph,400,10);
+			$scope.selected = $scope.nodes.data;
+			$scope.buildStaticTree($scope.nodes);
 		}, function errorCallback(response){
 			alert('Bad data call');
 		});
+		
+		$scope.isTree=true;
+		$scope.isFocused=false;
 	}
 	
 	///****************************************///
@@ -52,61 +71,32 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		{'text':'Show All','click':showAll},
 		{'text':'Reset','click':$scope.reset}]
 
-	$scope.buttons,$scope.buttonsText = makeButtons(buttonDefs,$scope.navbar,'nav','rect',[100,30]);
+	$scope.buttons,$scope.buttonsText = makeButtons(buttonDefs,$scope.navbar,'nav','rect',[100,30],20);
 	
 	$scope.svg = d3.select('#graph');
-
-	// Initialize all element variables	
-	$scope.node= $scope.svg.selectAll('.node');
-	$scope.link= $scope.svg.selectAll('.link');
-	$scope.text= $scope.svg.selectAll('.label');
-	$scope.children= $scope.svg.selectAll('.template--children');
-	$scope.depLink= $scope.svg.selectAll('.dependency');
 	
 	$scope.tree = d3.tree().size([$scope.height,$scope.width]);
     $scope.stratify = d3.stratify().parentId(function(d) { return d.parent; });
 	
 	$scope.reset();
-	$scope.update = function(node){
-		$scope.isTree=true;
-		$scope.isFocused=false;
-		
-		var hierarchy = d3.hierarchy(node,function(d){return d.children;});	
-		$scope.height = maxLevel(hierarchy,height=10);
-		var tree = d3.tree().size([$scope.height,hierarchy.height*400]);
-		$scope.nodes = tree(hierarchy);
-		$scope.selected = $scope.nodes;
-		
-		// Clear past objects from svg
+	
+	$scope.update = function(node){		
+		$scope.nodes = defineTree(node,400,10);
 		$scope.clearElements();
 		$scope.buildStaticTree($scope.nodes);
 	}
 
-	$scope.updateFocus = function(node){
-		$scope.isTree=false;
-		$scope.isFocused=true;
-		
-		var levels = d3.hierarchy(node, function(d){return d.children;});
-		$scope.height = maxLevel(node,height=10);
-		var focusTree = d3.tree().size([$scope.height,levels.height*300]);
-		$scope.fnodes = focusTree(levels);
-		$scope.clearElements();
-		$scope.buildStaticTree($scope.fnodes);
-	}
-	
+	///****************************************///
+	///*               Build graph            *///
+	///****************************************///
 	$scope.buildStaticTree = function(tree){
 		$scope.link = makeLinks(tree,$scope.svg);
 		$scope.node = makeNodes(tree,$scope.svg)
 						.on('dblclick',collapse);		
-						
-		//Aditional dependencies, won't affect structure or order of nodes
-		$scope.dependencies = [];
-		$scope.depLink = makeDependencyLinks($scope.dependencies,$scope.svg);		
-				
 		//Text must be defined last so that its on top of all elements
 		$scope.text = makeTexts(tree,$scope.svg)
 					.attr('transform',shiftText)
-					.on('dblclick',focus);	
+					.on('dblclick',function(d){console.log(d);});
 					
 		var templates = function(d){return d.data.type=='template';}
 		$scope.childrenText = makeChildrenTexts(tree,$scope.svg,templates);
@@ -116,8 +106,14 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			$scope.node.remove();
 			$scope.link.remove();
 			$scope.text.remove();
-			$scope.children.remove();
-			$scope.depLink.remove();
+			$scope.childrenText.remove();
+	}
+	
+	function defineTree(node,levelWidth,nodeHeight){
+		var hierarchy = d3.hierarchy(node,function(d){return d.children;});	
+		$scope.height = maxLevel(hierarchy,height=nodeHeight);
+		var tree = d3.tree().size([$scope.height,hierarchy.height*levelWidth]);
+		return tree(hierarchy);
 	}
 	///****************************************///
 	///***** EVENT HANDLING FUNCTIONS *********///
@@ -142,16 +138,6 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	// Focus on a given node.
 	// Currently not developed
 	function focus(d) {
-		if($scope.isTree | $scope.selected.data.name!=d.data.name){
-			$scope.selected = d;
-			var open = viewChildren(d);
-			$scope.focusNodes = simplify(open);
-			$scope.updateFocus($scope.focusNodes);
-			console.log($scope.graph);
-		} else {
-			$scope.selected=null;
-			$scope.reset();
-		}
 	}
 	
 	// Recursively hide all children in the entire graph.
