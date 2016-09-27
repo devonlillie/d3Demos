@@ -1,6 +1,6 @@
-function makeButtons(data,navbar,cl,sh,size){ 
+function makeButtons(data,navbar,cl,sh,size,x0){ 
 	for (var i =0,tot = data.length;i<tot;i++){
-		data[i].x = i*size[0]+20;
+		data[i].x = i*size[0]+x0
 		data[i].y = 10;
 	}
 	var buts = navbar
@@ -50,9 +50,9 @@ function makeNodes(tree,svg){
 		// 	dblclick  :  Collapse or expand children of node on double click
 		//	click  :  focus on node, doesn't change structure only changes view of tree		
 		return svg.selectAll('.node')
-			.data(tree.descendants()).enter()
+			.data(tree.descendants(),function(d){return d.name;}).enter()
 			.append('circle')
-				.attr('class',function(d){return 'node node--'+classify(d);})
+				.attr('class',function(d){ return 'node node--'+classify(d);})
 				.attr('r',5)
 				.attr('transform',move)
 				.attr('id',function(d){return d.data.name;});
@@ -102,7 +102,41 @@ function makeChildrenTexts(tree,svg,f) {
 			.attr('fill','red')
 			.attr('transform',function(d){return 'translate('+(Number(d.y)-20)+','+Number(5+d.x)+')';})
 			.attr('text-anchor','end');
-}	
+}
+
+		var lines = []
+		for (var i=1,tot=10;i<tot;i++){
+			lines.push({'y1':i*1200/10,'y2':i*1200/10,'x1':0,'x2':1200});
+		}
+		
+		for (var i=1,tot=6;i<tot;i++){
+			lines.push({'x1':i*1200/6,'x2':i*1200/6,'y1':0,'y2':1200});
+		}
+		
+function makeGrid(svg,w,h,nv,nh){
+	// horizontal and vertical gridlines with class gridline
+	// Attributes:
+	//	'class': gridline
+	//	'fill': 'none'
+	//	can set stroke color, width,dasharray, opacity etc with css
+	var lines =[];
+	for (var i=1,tot=nh;i<tot;i++){
+		lines.push({'x1':0,'x2':w,'y1':h/nh*i,'y2':h/nh*i});
+	}
+	for (var i=1,tot=nv;i<tot;i++){
+		lines.push({'y1':0,'y2':h,'x1':w/nv*i,'x2':w/nv*i});
+	}
+	
+	return svg.selectAll('.gridline')
+		.data(lines).enter()
+		.append('line')
+		.attr('class','gridline')
+		.attr('x1',function(d){return d.x1;})
+		.attr('x2',function(d){return d.x2;})
+		.attr('y1',function(d){return d.y1;})
+		.attr('y2',function(d){return d.y2;})
+		.attr('fill','none');
+}
 
 function createSvg(id){
 	return d3.select(id)
