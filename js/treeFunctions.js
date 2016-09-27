@@ -70,7 +70,7 @@ function maxDepth(node,depth){
 // Only on the data, not on the d3 tree structure unless specifically
 //applied to the node.data object
 function allChildren(node){
-	return node.children.concat(node._children);
+	return [].concat(node.children).concat(node._children);
 }
 
 
@@ -93,4 +93,37 @@ function flatten(node){
 		}
 		recurse(node);
 		return {nodes:nodes,links:links};
+}
+
+function focusView(d) {
+	var crnt = d;
+	var prev = null;
+	var children = null;
+	while (crnt.parent & crnt.parent!=null) {
+		children = [prev];
+		prev=crnt;
+		crnt = crnt.parent;
+		crnt.children = children;
+	}
+	//crnt is the root at this point
+	return crnt
+}
+
+// Given a tree node with it's depth if it is past the maxdepth hide its children
+// else show all of its children.
+function minTree(node,depth){
+	var c = allChildren(node);
+	var cnodes = [];
+	for (var i=0,tot= c.length; i<tot;i++){
+		cnodes.push(minTree(c[i],depth+1));
+	}
+	
+	if (depth < 3){
+		node.children = cnodes;
+		node._children=[];
+	} else {
+		node._children = cnodes;
+		node.children=[];
+	}
+	return node;
 }
