@@ -111,14 +111,14 @@ function focusView(d) {
 
 // Given a tree node with it's depth if it is past the maxdepth hide its children
 // else show all of its children.
-function minTree(node,depth){
+function minTree(node,depth,maxdepth){
 	var c = allChildren(node);
 	var cnodes = [];
 	for (var i=0,tot= c.length; i<tot;i++){
 		cnodes.push(minTree(c[i],depth+1));
 	}
 	
-	if (depth < 3){
+	if (depth < (maxdepth-1)){
 		node.children = cnodes;
 		node._children=[];
 	} else {
