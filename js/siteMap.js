@@ -29,6 +29,7 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		.append("svg")
 		.attr('id','graph');
 	
+	$scope.transform = {'x':0,'y':0,'k':1};
 		
 	function click_zoom(d){
 		var y = windowHeight/2-60,
@@ -36,19 +37,24 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		    z = d3.zoomIdentity,
 		    newy = (y-d.x*z.k-1)/(1+z.k),
 		    newx = (x-d.y*z.k-1)/(1+z.k);
-		$scope.transform.y = newy;
-		$scope.transform.x = newx;
-		var t = d3.zoomIdentity.translate(newx,newy).scale(z.k,z.k);
-		$scope.g.attr('transform',t);
+		    
+		$scope.transform = d3.zoomIdentity.translate(newx,newy);
+		$scope.g.attr('transform',$scope.transform);
 	}
 	
 	function all_zoom(){
-		var ze = d3.event.transform,
-			zx = ze.x,
-			zy = ze.y,
-			zk=ze.k;
-		var zt = d3.zoomIdentity.translate(zx,zy).scale(zk,zk);
-		$scope.g.attr('transform',zt);
+		var z = d3.event.transform;
+		var src = d3.event.sourceEvent;
+		$scope.transform = $scope.transform.translate(src.movementX,src.movementY).scale(z.k);
+		$scope.g.attr('transform',$scope.transform);
+	}
+	
+	function check_click_zoom(){
+		var e = d3.event;
+		if (e.target!=null){
+			console.log(e.__data__);
+			click_zoom(e);
+		}
 	}
 	
 	$scope.zoom = d3.zoom()
@@ -60,7 +66,7 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			.append("svg")
 			.attr('id','graph')
 			.call($scope.zoom)
-			.on("dblclick.zoom", null)
+			.on("dblclick.zoom", check_click_zoom)
 			.style('padding','0px')
 			.style('margin','0px')
 			.attr('width',windowWidth) 
@@ -79,13 +85,17 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			.attr('id','gcontainer');
 
 		$http.get('/json/Teims/').then(function successCallback(response){
-			$scope.graph = minTree(response.data,0,4);
+			$scope.graph = minTree(response.data,0,3);
 			$scope.graph.x0=100;
 			$scope.graph.y0=0;
 			
+			
 			$scope.nodes = defineTree($scope.graph,400,10);
 			$scope.selected = $scope.nodes.data;
+			console.log($scope.nodes);
 			$scope.buildStaticTree($scope.nodes);
+			
+			$scope.transform = d3.zoomIdentity;
 		}, function errorCallback(response){
 			alert('Bad data call');
 		});
@@ -103,10 +113,7 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 
 	$scope.buttons,$scope.buttonsText = makeButtons(buttonDefs,$scope.navbar,'nav','rect',[100,30],20);
 	
-	$scope.svg = d3.select('#graph');
-	
 	$scope.tree = d3.tree().size([$scope.height,$scope.width]);
-    $scope.stratify = d3.stratify().parentId(function(d) { return d.parent; });
 	
 	$scope.reset();
 	
@@ -222,3 +229,6 @@ function classifyLink(d) {
 	else {c=c+' internal';}
 	return c;
 }
+
+
+	
