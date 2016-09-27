@@ -30,32 +30,6 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		.attr('id','graph');
 	
 	$scope.transform = {'x':0,'y':0,'k':1};
-		
-	function click_zoom(d){
-		var y = windowHeight/2-60,
-		    x =100,
-		    z = d3.zoomIdentity,
-		    newy = (y-d.x*z.k-1)/(1+z.k),
-		    newx = (x-d.y*z.k-1)/(1+z.k);
-		    
-		$scope.transform = d3.zoomIdentity.translate(newx,newy);
-		$scope.g.attr('transform',$scope.transform);
-	}
-	
-	function all_zoom(){
-		var z = d3.event.transform;
-		var src = d3.event.sourceEvent;
-		$scope.transform = $scope.transform.translate(src.movementX,src.movementY).scale(z.k);
-		$scope.g.attr('transform',$scope.transform);
-	}
-	
-	function check_click_zoom(){
-		var e = d3.event;
-		if (e.target!=null){
-			console.log(e.__data__);
-			click_zoom(e);
-		}
-	}
 	
 	$scope.zoom = d3.zoom()
 		.on("zoom",all_zoom);
@@ -86,7 +60,7 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 
 		$http.get('/json/Teims/').then(function successCallback(response){
 			$scope.graph = minTree(response.data,0,3);
-			$scope.graph.x0=100;
+			$scope.graph.x0=0;
 			$scope.graph.y0=0;
 			
 			
@@ -109,7 +83,8 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	///****************************************///
 	var buttonDefs = [{'text':'Collapse All','click':collapseAll,'class':'navs'},
 		{'text':'Show All','click':showAll},
-		{'text':'Reset','click':$scope.reset}]
+		{'text':'Reload','click':$scope.reset},
+		{'text':'Reset View','click':reset}]
 
 	$scope.buttons,$scope.buttonsText = makeButtons(buttonDefs,$scope.navbar,'nav','rect',[100,30],20);
 	
@@ -188,9 +163,47 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	function showAll(){
 		$scope.graph = viewChildren($scope.graph,mode='show');
 		$scope.update($scope.graph);
+		
 	}
 	function reset(){
+		click_zoom($scope.nodes);
+	}
+	
+	function click_zoom(d){
+		var y = windowHeight/2-60,
+			childLength = (d.height-d.depth +1 )*400,
+			preLength = d.depth*400,
+		    z = d3.zoomIdentity;
 
+		if((childLength+preLength +20)>windowWidth){
+			var x = -preLength+100;
+		}
+		else {
+			var x= 100;
+		}
+		
+		var newy = (y-d.x*z.k-1)/(1+z.k),
+		    newx = (x-d.y*z.k-1)/(1+z.k);
+		$scope.transform = d3.zoomIdentity.translate(newx,newy);
+		$scope.g.attr('transform',$scope.transform);
+	}
+	
+	function all_zoom(){
+		var src = d3.event.sourceEvent;
+		var z = d3.event.transform;
+		if(src.type=='wheel'){
+			$scope.transform = d3.zoomIdentity.translate($scope.transform.x,$scope.transform.y).scale(z.k);
+		} else {
+			$scope.transform = $scope.transform.translate(src.movementX,src.movementY);
+		}
+		$scope.g.attr('transform',$scope.transform);
+	}
+	
+	function check_click_zoom(){
+		var e = d3.event;
+		if (e.target!=null & e.target.tagName=='text'){
+			click_zoom(e.target.__data__);
+		}
 	}
 	//Create a link in the bound data between two nodes acessed by given ids
 	$scope.makeLink = function(par,chi){
