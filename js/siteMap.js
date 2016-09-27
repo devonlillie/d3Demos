@@ -12,11 +12,12 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	}
 	
 	window.onresize = updateWindow;
-	
+		
 	$scope.height = windowHeight;
 	$scope.width = windowWidth;
 	
-	$scope.zoom = d3.zoom()
+
+	
 	$scope.navbar = d3.select('#navbar')
 		.append('svg')
 		.attr('id','navbar')
@@ -26,33 +27,62 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 
 	$scope.svg = d3.select('#d3canvas')
 		.append("svg")
-		.attr('height','100%')
-		.attr('width','100%')
-		.attr('id','graph')
-		.attr('class','nopadding')
-		.call($scope.zoom.on("zoom", function () {
-			 $scope.svg.attr("transform", d3.event.transform);}))
-		.on("dblclick.zoom", null)
-		.append('g');
-               	       	 
+		.attr('id','graph');
+	
+		
+	function click_zoom(d){
+		var y = windowHeight/2-60,
+		    x =100,
+		    z = d3.zoomIdentity,
+		    newy = (y-d.x*z.k-1)/(1+z.k),
+		    newx = (x-d.y*z.k-1)/(1+z.k);
+		$scope.transform.y = newy;
+		$scope.transform.x = newx;
+		var t = d3.zoomIdentity.translate(newx,newy).scale(z.k,z.k);
+		$scope.g.attr('transform',t);
+	}
+	
+	function all_zoom(){
+		var ze = d3.event.transform,
+			zx = ze.x,
+			zy = ze.y,
+			zk=ze.k;
+		var zt = d3.zoomIdentity.translate(zx,zy).scale(zk,zk);
+		$scope.g.attr('transform',zt);
+	}
+	
+	$scope.zoom = d3.zoom()
+		.on("zoom",all_zoom);
+	
 	$scope.reset = function(){
 		d3.select('#graph').remove();
-		$scope.zoom = d3.zoom()
 		$scope.svg = d3.select('#d3canvas')
 			.append("svg")
 			.attr('id','graph')
-			.attr('class','nopadding')
-			.attr('height','100%')
-			.attr('width','100%')
-			.call($scope.zoom.on("zoom", function () {
-				 $scope.svg.attr("transform", d3.event.transform);}))
+			.call($scope.zoom)
 			.on("dblclick.zoom", null)
-			.append('g');
+			.style('padding','0px')
+			.style('margin','0px')
+			.attr('width',windowWidth) 
+			.attr('height',windowHeight)
+			.append('g');		
 	
+		$scope.svg
+			.append('rect').attr('height',windowHeight-50).attr('width',windowWidth)
+			.attr('fill','none');
+		
+		$scope.g = $scope.svg
+			.append('g')
+			.attr('class','mover');
+		
+		$scope.objects = $scope.g.append('g')
+			.attr('id','gcontainer');
+
 		$http.get('/json/Teims/').then(function successCallback(response){
-			$scope.graph = response.data;
-			$scope.graph.x0=0;
+			$scope.graph = minTree(response.data,0);
+			$scope.graph.x0=100;
 			$scope.graph.y0=0;
+			
 			$scope.nodes = defineTree($scope.graph,400,10);
 			$scope.selected = $scope.nodes.data;
 			$scope.buildStaticTree($scope.nodes);
@@ -90,16 +120,15 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	///*               Build graph            *///
 	///****************************************///
 	$scope.buildStaticTree = function(tree){
-		$scope.link = makeLinks(tree,$scope.svg);
-		$scope.node = makeNodes(tree,$scope.svg)
+		$scope.link = makeLinks(tree,$scope.objects);
+		$scope.node = makeNodes(tree,$scope.objects)
 						.on('dblclick',collapse);		
 		//Text must be defined last so that its on top of all elements
-		$scope.text = makeTexts(tree,$scope.svg)
-					.attr('transform',shiftText)
-					.on('dblclick',function(d){console.log(d);});
+		$scope.text = makeTexts(tree,$scope.objects)
+					.attr('transform',shiftText);
 					
 		var templates = function(d){return d.data.type=='template';}
-		$scope.childrenText = makeChildrenTexts(tree,$scope.svg,templates);
+		$scope.childrenText = makeChildrenTexts(tree,$scope.objects,templates);
 	}
 	
 	$scope.clearElements = function(){
@@ -132,6 +161,8 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			d.data.children = d.data._children;
 			d.data._children = [];
 			$scope.update($scope.graph);
+		} else if(d.data.type=='dummy') {
+			console.log(d3.select('#'+d.data.parent));
 		}
 	}
 	
@@ -169,13 +200,17 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 function classify(d) {
 	if(d.children){return 'internal';} 
 	else if(d.data._children.length>0 & d.data.children.length==0){return 'cluster';} 
-    else {return 'leaf';}
+    else {
+	if (d.data.type=='dummy') {return 'dummy';}
+	else {return 'leaf';}
+	}
 }
 
 // Based on position in the tree, shift text for cleaner viewing
 function shiftText(d){
 	switch(classify(d)){
 		case 'leaf': return 'translate('+(Number(d.y)+10)+','+(Number(d.x)+5)+')';
+		case 'dummy': return 'translate('+(Number(d.y)+10)+','+(Number(d.x)+5)+')';
 		case 'cluster': return 'translate('+(Number(d.y)+10)+','+(Number(d.x)+5)+')';
 		case 'internal': return 'translate('+(Number(d.y)+10)+','+(Number(d.x)+5)+')';
 		default: return 'translate('+d.y+','+d.x+')';}
@@ -187,6 +222,3 @@ function classifyLink(d) {
 	else {c=c+' internal';}
 	return c;
 }
-
-
-	
