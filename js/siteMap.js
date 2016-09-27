@@ -79,7 +79,7 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			.attr('id','gcontainer');
 
 		$http.get('/json/Teims/').then(function successCallback(response){
-			$scope.graph = minTree(response.data,0);
+			$scope.graph = minTree(response.data,0,4);
 			$scope.graph.x0=100;
 			$scope.graph.y0=0;
 			
