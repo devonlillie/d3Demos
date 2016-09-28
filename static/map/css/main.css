@@ -1,0 +1,52 @@
+.nopadding {
+   padding: 0 !important;
+   margin: 0 !important;
+}
+.nodpadding html,body {
+	height:100%
+}
+.bubble {
+	padding:20px;
+	margin:10px;
+}
+
+#page {
+	background-color:F0F8FF;
+}
+
+.infobox {
+	fill:white;
+	stroke-dasharray:5,5;
+	stroke:black;
+	stroke-width:2px;
+}
+
+
+.navcontainer {
+	display:block;
+}
+
+.btn {
+	margin:10px;
+	margin-left:5px;
+	padding:5px;
+}
+
+.navtext{
+	font:13px sans-serif;
+	color:white;
+}
+td {
+	padding-left:10px;
+	padding-right:10px;
+	}
+table {
+	margin-top:10px;
+}
+
+.nav-col {
+	margin-left:0px;
+	margin-right:0px;
+	padding-left:50px;
+	padding-right:0px;
+}
