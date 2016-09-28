@@ -1,0 +1,56 @@
+text {
+	font:12px sans-serif;
+}
+
+text.legend {
+ fill:black;
+ color:black;
+}
+#d3canvas {
+	min-width:720px;
+	min-height:720px;
+}
+
+#navbar {
+	background-color:slategrey;
+	color:black;
+}
+
+.nav {
+	stroke-width:1px;
+	stroke:#000;
+}
+.node {
+	stroke-width:2px;
+	fill:#fff;
+	stroke:#000;
+}
+
+.node--internal {
+	stroke:steelblue;
+}
+
+.node--cluster {
+	stroke:black;
+}
+
+.node--dummy {
+	stroke-dasharray: 2,2; 
+}
+
+.hiddenchildren {
+	fill:#ccc;
+}
+
+.template--children {
+	fill:red;
+}
+
+.link,.dependency {
+	fill:none;
+	stroke:#ddd;
+	stroke-opacity:0.7;
+	stroke-width:1.5px;
+}
+
+
