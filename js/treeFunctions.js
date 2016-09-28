@@ -5,13 +5,8 @@
 
 // Show/hide all children recursively
 function viewChildren(node,mode){
-	var childs = [];
+	var childs = allChildren(node);
 	var newchilds = [];
-	if (('children' in node )==false) return node;
-	if (node.children.length>0)
-	{childs = node.children;}
-	else if (node._children.length>0)
-	{childs = node._children;}
 	for(var i=0,tot=childs.length;i<tot;i++){
 		newchilds.push(viewChildren(childs[i],mode));
 	}
@@ -70,7 +65,13 @@ function maxDepth(node,depth){
 // Only on the data, not on the d3 tree structure unless specifically
 //applied to the node.data object
 function allChildren(node){
-	return [].concat(node.children).concat(node._children);
+	return [].concat(node.children).concat(node._children.filter(function(d){
+		for (var i=0,tot=node.children.length;i<tot;i++){
+			if (d.name==node.children[i].name){
+				return false;
+			}
+		}
+		return true;}));
 }
 
 
@@ -95,30 +96,47 @@ function flatten(node){
 		return {nodes:nodes,links:links};
 }
 
-function focusView(d) {
-	var crnt = d;
-	var prev = null;
-	var children = null;
-	while (crnt.parent & crnt.parent!=null) {
-		children = [prev];
-		prev=crnt;
-		crnt = crnt.parent;
-		crnt.children = children;
+function focusView(root,id) {
+	function recurse(parent){
+		var temp_children = allChildren(parent);
+		var found = [];
+		var hidden = [];
+		for(var i=0,tot=temp_children.length;i<tot;i++){
+			if (temp_children[i].name==id){
+				var finalNode = temp_children[i];
+				parent.children = [finalNode];
+				parent._children = temp_children.filter(function(d){return d.name!=finalNode.name;});
+				return parent;
+			} else if (temp_children[i].type=='dummy' & temp_children[i].parent==id){
+				var finalNode = temp_children[i];
+				parent.children = [finalNode];
+				parent._children = temp_children.filter(function(d){return d.name!=finalNode.name;});
+				return parent;
+			}
+			var path = recurse(temp_children[i]);
+			if (path.children.length>0)
+			{found.push(path);}
+			else {hidden.push(path);}
+		}
+		parent.children = found;
+		parent._children = hidden;
+		return parent;
 	}
-	//crnt is the root at this point
-	return crnt
+	$('#detailname').html(id).attr('value',id);
+	return recurse(root);
 }
 
 // Given a tree node with it's depth if it is past the maxdepth hide its children
 // else show all of its children.
 function minTree(node,depth,maxdepth){
+	
 	var c = allChildren(node);
 	var cnodes = [];
 	for (var i=0,tot= c.length; i<tot;i++){
-		cnodes.push(minTree(c[i],depth+1));
+		cnodes.push(minTree(c[i],depth+1,maxdepth));
 	}
 	
-	if (depth < (maxdepth-1)){
+	if (depth < (maxdepth - 1)){
 		node.children = cnodes;
 		node._children=[];
 	} else {
