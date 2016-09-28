@@ -1,0 +1,35 @@
+<html>
+{% load staticfiles %}
+<head>
+{% block head %}
+	<title>{{ pageTitle }}</title>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.8/angular.js"></script>
+	<script src="https://code.angularjs.org/tools/system.js"></script>
+	<script src="https://code.jquery.com/jquery-3.1.0.js" integrity="sha256-slogkvB1K3VOkzAI8QITxV3VzpOnkeNVsKvtkYLMjfk=" crossorigin="anonymous"></script>	
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+	{% for s in cssCDN %}<link rel="stylesheet" href="{{s}}">{% endfor %}
+	{% for s in cssFiles %}<link rel="stylesheet" href="{% static s %}">{% endfor %}
+	<style>{% block css %}{% endblock %}</style>
+	
+{% endblock %}
+</head>
+	<body id="page">
+	{% if angularPage %}
+	<div class="container-fluid nopadding" ng-app="d3App" id="pagecanvas">
+	{% else %}
+	<div class="container-fluid nopadding" id="pagecanvas">
+	{% endif %}
+	
+	{% block content %}
+	{% endblock %}
+	</div>
+	
+	{% for jcdn in jsCDN %}<script src="{{jcdn}}"></script>{% endfor %}
+	{% block javascript %}
+	{% endblock %}
+	</body>
+</html>
