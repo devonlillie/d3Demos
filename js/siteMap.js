@@ -1,41 +1,45 @@
-var app = angular.module('d3App',[]);
+var app = angular.module('d3App',['rzModule']);
 
 
 app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	window.S = $scope;
 	var windowHeight = window.innerHeight;
-	var windowWidth = window.innerWidth;
-	function updateWindow(){
-		windowHeight = document.body.clientHeight;
-		windowWidth = document.body.clientWidth;
-		$scope.svg.attr("width", document.body.clientWidth).attr("height", document.body.clientHeight-50);
-	}
+	var windowWidth = window.innerWidth-15;
 	
-	window.onresize = updateWindow;
-		
-	$scope.height = windowHeight;
+	$scope.colSlider = {
+			hideLimitLabels:true,
+			hidePointerLabels:true,
+			step:50,
+			floor: 200,
+			ceil: 450
+	};
+	
+	$scope.depthSlider = {
+			hideLimitLabels:true,
+			hidePointerLabels:true,
+			floor: 1,
+			ceil: 6
+	};
+
+	var navHeight = d3.select('#navbar').node().clientHeight;
+	
+	$scope.height = windowHeight-navHeight-15;
 	$scope.width = windowWidth;
-	
-
-	
-	$scope.navbar = d3.select('#navbar')
-		.append('svg')
-		.attr('id','navbar')
-		.attr('height',50)
-		.attr('width','100%')
-		.attr('x',0).attr('y',0);
-
-	$scope.svg = d3.select('#d3canvas')
-		.append("svg")
-		.attr('id','graph');
-	
-	$scope.transform = {'x':0,'y':0,'k':1};
 	
 	$scope.zoom = d3.zoom()
 		.on("zoom",all_zoom);
-	
+
+	$scope.svg = d3.select('.graph');
+
+	///****************************************///
+	///***** Initialize canvas elements *******///
+	///****************************************///
+	// SCOPE FUNCTIONS
 	$scope.reset = function(){
+		$scope.colWidth = 300;
+		$scope.defaultDepth = 3;
 		d3.select('#graph').remove();
+		
 		$scope.svg = d3.select('#d3canvas')
 			.append("svg")
 			.attr('id','graph')
@@ -44,13 +48,13 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 			.style('padding','0px')
 			.style('margin','0px')
 			.attr('width',windowWidth) 
-			.attr('height',windowHeight)
-			.append('g');		
+			.attr('height',windowHeight-navHeight-15)
+			.append('g');	
 	
 		$scope.svg
-			.append('rect').attr('height',windowHeight-50).attr('width',windowWidth)
+			.append('rect').attr('height',windowHeight-navHeight-15).attr('width',windowWidth)
 			.attr('fill','none');
-		
+			
 		$scope.g = $scope.svg
 			.append('g')
 			.attr('class','mover');
@@ -58,18 +62,31 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		$scope.objects = $scope.g.append('g')
 			.attr('id','gcontainer');
 
-		$http.get('/json/Teims/').then(function successCallback(response){
-			$scope.graph = minTree(response.data,0,3);
+		$http.get('/json/miniTeims/').then(function successCallback(response){
+			$scope.graph = minTree(response.data,0,$scope.defaultDepth);
 			$scope.graph.x0=0;
 			$scope.graph.y0=0;
-			
-			
-			$scope.nodes = defineTree($scope.graph,400,10);
-			$scope.selected = $scope.nodes.data;
-			console.log($scope.nodes);
+				
+			$scope.nodes = defineTree($scope.graph,$scope.colWidth,10);
+			$scope.selected = '';
 			$scope.buildStaticTree($scope.nodes);
-			
 			$scope.transform = d3.zoomIdentity;
+			click_zoom($scope.nodes);
+				
+			///****************************************///
+			///***** Variable watchers for graph *******///
+			///****************************************///
+			$scope.$watch("colWidth", function(){
+				if($scope.graph){
+					$scope.update();
+				}
+			});
+			//$scope.$watch("defaultDepth", function(){
+			//	if($scope.graph){
+			//		$scope.resetView();
+			//	}
+			//});
+	
 		}, function errorCallback(response){
 			alert('Bad data call');
 		});
@@ -78,39 +95,31 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 		$scope.isFocused=false;
 	}
 	
-	///****************************************///
-	///***** Graph Building functions *********///
-	///****************************************///
-	var buttonDefs = [{'text':'Collapse All','click':collapseAll,'class':'navs'},
-		{'text':'Show All','click':showAll},
-		{'text':'Reload','click':$scope.reset},
-		{'text':'Reset View','click':reset}]
-
-	$scope.buttons,$scope.buttonsText = makeButtons(buttonDefs,$scope.navbar,'nav','rect',[100,30],20);
-	
 	$scope.tree = d3.tree().size([$scope.height,$scope.width]);
-	
 	$scope.reset();
-	
-	$scope.update = function(node){		
-		$scope.nodes = defineTree(node,400,10);
-		$scope.clearElements();
-		$scope.buildStaticTree($scope.nodes);
-	}
 
 	///****************************************///
 	///*               Build graph            *///
 	///****************************************///
+	$scope.update = function(){
+		$scope.nodes = defineTree($scope.graph,$scope.colWidth,10);
+		$scope.clearElements();
+		$scope.buildStaticTree($scope.nodes);
+	}
+	
 	$scope.buildStaticTree = function(tree){
 		$scope.link = makeLinks(tree,$scope.objects);
-		$scope.node = makeNodes(tree,$scope.objects)
-						.on('dblclick',collapse);		
+		$scope.node = makeNodes(tree,$scope.objects,$scope.selected)
+						.on('dblclick',collapse);
+							
 		//Text must be defined last so that its on top of all elements
 		$scope.text = makeTexts(tree,$scope.objects)
-					.attr('transform',shiftText);
+					.attr('transform',shiftText)
+					.style('cursor','pointer');
 					
 		var templates = function(d){return d.data.type=='template';}
 		$scope.childrenText = makeChildrenTexts(tree,$scope.objects,templates);
+
 	}
 	
 	$scope.clearElements = function(){
@@ -122,8 +131,8 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	
 	function defineTree(node,levelWidth,nodeHeight){
 		var hierarchy = d3.hierarchy(node,function(d){return d.children;});	
-		$scope.height = maxLevel(hierarchy,height=nodeHeight);
-		var tree = d3.tree().size([$scope.height,hierarchy.height*levelWidth]);
+		var height = maxLevel(hierarchy,height=nodeHeight);
+		var tree = d3.tree().size([height,hierarchy.height*levelWidth]);
 		return tree(hierarchy);
 	}
 	///****************************************///
@@ -134,56 +143,58 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	// Note: Does not change any of the children, 
 	// 	 internal structure is maintained
 	function collapse(d) {
-		if (d.children) {
-			d.data._children = d.data.children;
+		var allchildren = allChildren(d.data);
+		if (d.data.type=='dummy'){
+			console.log('dummy');
+		}
+		else if (d.data.children.length>d.data._children.length) {
+			d.data._children = allchildren;
 			d.data.children = [];
-			$scope.update($scope.graph);
+			$scope.update();
 		}
-		else if(d.data._children){
-			d.data.children = d.data._children;
+		else {
+			d.data.children = allchildren;
 			d.data._children = [];
-			$scope.update($scope.graph);
-		} else if(d.data.type=='dummy') {
-			console.log(d3.select('#'+d.data.parent));
-		}
-	}
-	
-	// Focus on a given node.
-	// Currently not developed
-	function focus(d) {
+			$scope.update();
+		} 
 	}
 	
 	// Recursively hide all children in the entire graph.
-	function collapseAll(){
+	$scope.collapseAll = function(){
 		$scope.graph = viewChildren($scope.graph,mode='hide');		
-		$scope.update($scope.graph);
+		$scope.update();
+		click_zoom($scope.nodes);
 	}
 	
 	// Recursively reveal all children in the entire graph.
-	function showAll(){
+	$scope.showAll = function(){
 		$scope.graph = viewChildren($scope.graph,mode='show');
-		$scope.update($scope.graph);
-		
+		$scope.update();
+		click_zoom($scope.nodes);
 	}
-	function reset(){
+	
+	$scope.resetView = function(){
+		$scope.graph = minTree($scope.graph,0,$scope.defaultDepth);
+		$scope.update();
 		click_zoom($scope.nodes);
 	}
 	
 	function click_zoom(d){
-		var y = windowHeight/2-60,
-			childLength = (d.height-d.depth +1 )*400,
-			preLength = d.depth*400,
+		var y = (windowHeight-navHeight-15)/2-60,
+			gbox = d3.select('#gcontainer').node().getBBox(),
+			branchLength = gbox.width+$scope.colWidth/2,
+			branchHeight = gbox.height,
 		    z = d3.zoomIdentity;
+		    
+		var shiftX1 = Math.max(0,branchLength-$scope.width-d.y),
+			shiftX2 = Math.min(0,$scope.width-branchLength);
 
-		if((childLength+preLength +20)>windowWidth){
-			var x = -preLength+100;
-		}
-		else {
-			var x= 100;
-		}
-		
-		var newy = (y-d.x*z.k-1)/(1+z.k),
-		    newx = (x-d.y*z.k-1)/(1+z.k);
+		var shiftY1 = (branchHeight/2-d.y)/2,
+			shiftY2 = ($scope.height-branchHeight)/2;
+
+		var newy = shiftY2,
+		   newx = shiftX1+shiftX2+100;
+
 		$scope.transform = d3.zoomIdentity.translate(newx,newy);
 		$scope.g.attr('transform',$scope.transform);
 	}
@@ -202,7 +213,23 @@ app.controller('d3PlotController',['$scope','$http',function($scope,$http){
 	function check_click_zoom(){
 		var e = d3.event;
 		if (e.target!=null & e.target.tagName=='text'){
-			click_zoom(e.target.__data__);
+			var d = e.target.__data__;
+			if(d.data.type=='dummy'){
+				var new_focus = d.data.parent;	
+			} else {
+				var new_focus = d.data.name;	
+			}
+			
+			if(new_focus!=$scope.selected){
+				$scope.selected=new_focus;
+				focusView(viewChildren($scope.graph,'show'),new_focus);
+				$scope.update();
+				click_zoom(d);
+			} else {
+				$scope.selected='';
+				$scope.resetView();
+			}
+			
 		}
 	}
 	//Create a link in the bound data between two nodes acessed by given ids
@@ -238,7 +265,7 @@ function shiftText(d){
 
 function classifyLink(d) {
 	c =''
-	if(d.target.data.internal==false) {c=c+' external';}
+	if(d.data.internal==false) {c=c+' external';}
 	else {c=c+' internal';}
 	return c;
 }
