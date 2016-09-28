@@ -1,0 +1,46 @@
+{% extends 'erdmap/base.html' %}
+{% load staticfiles %}
+
+{% block css %}
+.rzslider {margin-top:15px;}
+.rzslider .rz-pointer { width: 12px;height: 12px;border-radius: 6px; top: -3px; background-color:black; }
+.rzslider .rz-pointer:after { top: 0px;left: 0px;width: 0px;height: 0px; border-radius: 0px }
+{% endblock %}
+
+{% block content %}
+<div ng-controller="d3PlotController">
+	<div class="row" id="navbar" class="navcontainer">
+		<div class="col-sm-4 nav-col" id="buttons">
+			<button id="reload" ng-click="reset()" class="btn btn-default">Reload</button>
+			<button id="reset" ng-click="resetView()" class="btn btn-default">Reset View</button>
+			<button id="collapse" ng-click="collapseAll()" class="btn btn-default">Collapse All</button>
+			<button id="expand" ng-click="showAll()" class="btn btn-default">Expand All</button>
+			
+			<table class="center">
+			<tr>
+				<td><span class="navtext">Column Width</span></td>
+				<td><span class="navtext">Default Depth</span></td>
+			</tr>
+				<tr>
+					<td><rzslider id="cw"  rz-slider-model="colWidth" rz-slider-options="colSlider"></rzslider></td>
+					<td><rzslider id="dpth"  rz-slider-model="defaultDepth" rz-slider-options="depthSlider"></rzslider></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<div class="row" id="graphcontainer">
+		<div class="col-sm-12 nopadding" id="d3canvas">
+		</div>
+	</div>
+</div>
+<div class="row" ng-controller="detailsControl">
+
+<input type="text" class="hidden" id="detailname" ng-change="load()" ng-model="detailNode"></input>
+</div>
+{% endblock %}
+
+{% block javascript %}
+        {% for j in jsFiles %}
+                <script type="text/javascript" src="{% static j %}"></script>
+        {% endfor %}
+{% endblock %}
