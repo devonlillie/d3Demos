@@ -34,11 +34,11 @@ function makeLinks(tree,svg){
 	return svg.selectAll(".link")
 		.data(tree.descendants().slice(1))
 		.enter().append("path")
-			.attr("class","link")
+			.attr("class",function(d){return "link link--"+classifyLink(d);})
 			.attr("d", curveLink);
 }
 
-function makeNodes(tree,svg){
+function makeNodes(tree,svg,id){
 		// Create circle node elements from from $scope.nodes
 		// Attributes:
 		// 	'class': 'node' and 'node--{{type}}'
@@ -52,8 +52,15 @@ function makeNodes(tree,svg){
 		return svg.selectAll('.node')
 			.data(tree.descendants(),function(d){return d.name;}).enter()
 			.append('circle')
-				.attr('class',function(d){ return 'node node--'+classify(d);})
-				.attr('r',5)
+				.attr('class',function(d){
+					var t = 'node node--'+classify(d);
+					if (d.data._children.length>0){
+						t=t+' hiddenChildren';}
+					else if (d.data.name==id){t=t+' focus--node';}
+					return t;})
+				.attr('r',function(d){
+					if(d.data.name==id){return 10;}
+					else {return 5;}})
 				.attr('transform',move)
 				.attr('id',function(d){return d.data.name;});
 }
@@ -138,7 +145,7 @@ function makeGrid(svg,w,h,nv,nh){
 		.attr('fill','none');
 }
 
-function createSvg(id){
+function createSvg(id,zoom){
 	return d3.select(id)
 		.append("svg")
 		.attr('height','100%')
